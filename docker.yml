@@ -10,26 +10,57 @@
       upgrade: dist
       update_cache: yes
     when: ansible_distribution == "Ubuntu"
-    
+
   - name: docker installation
     apt:
       name: docker.io
       state: latest
     when: ansible_distribution == "Ubuntu"
-    
+
   - name: docker enable
-    service: 
+    service:
       name: docker
       state: started
       enabled: true
-   
-  - name: docker build
+
+  - name: add docker group on the current user
+    shell:
+      usermod -aG docker twinkle
+
+  - name: restart docker
+    service:
+      name: docker
+      state: restarted
+      enabled: true
+
+   ## BUILDING DOCKER
+  - name: create build directory
+    file:
+       path: ./root/demo-dockerfile
+       state: directory
+       owner: root
+       group: root
+       mode: '0755'
+
+  - name: copy Dockerfile
+    copy:
+      src: ./Dockerfile
+      dest: ./root/demo-dockerfile/Dockerfile
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: build container image
     docker_image:
-      name: containeransible
+      name: dockerr
+      source: build
       build:
+        path: ./root/demo-dockerfile
         args:
-           listen_port: 8080
-           
-           
-                 
+          listen_port: 8080
+      state: present
+
+  - name: access containerized app
+    shell:
+      docker run -it -d -p 8080:80 dockerr
 
